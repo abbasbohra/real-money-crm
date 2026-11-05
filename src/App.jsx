@@ -9,87 +9,66 @@ import AdminPanel from "./AdminPanel";
 export default function App() {
   const [session, setSession] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
-
-  // State for active tab: 'list', 'add', or 'admin'
   const [activeTab, setActiveTab] = useState("list");
-
-  // State to track if the logged-in user is an admin
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Get initial session
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => setSession(session));
-
-    // Listen for auth changes (login/logout)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => subscription.unsubscribe();
   }, []);
 
-  // Check if the current user has admin privileges
   useEffect(() => {
     if (!session) return;
-
     const checkAdmin = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("profiles")
         .select("is_admin")
         .eq("id", session.user.id)
         .single();
-
       if (data?.is_admin) setIsAdmin(true);
     };
     checkAdmin();
   }, [session]);
 
-  // If not logged in, show login screen
   if (!session) return <Auth />;
-
-  // Helper for tab styling
-  const getTabClass = (tabName) => {
-    const baseClass =
-      "flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200";
-    return activeTab === tabName
-      ? `${baseClass} border-teal-500 text-teal-600`
-      : `${baseClass} border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300`;
-  };
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Top Header */}
-      <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-20">
+      {/* Header */}
+      <header className="bg-[#0B1120] text-white border-b border-slate-800 sticky top-0 z-20 shadow-md">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {/* Logo Placeholder - Replace with your logo */}
             <img
               src="/logo.png"
               alt="Real Money Logo"
-              className="w-10 h-10 rounded-full object-cover"
+              className="w-10 h-10 mx-auto rounded-full object-cover shadow-sm mb-0 border-2 border-slate-100"
             />
             <div>
-              <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-tight">
-                Real Money
-              </h1>
-              <p className="text-[11px] text-slate-500 font-medium">
+              <h1 className="text-lg font-bold tracking-tight">Real Money</h1>
+              <p className="text-[11px] text-slate-400 font-medium">
                 Loan Management System
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-sm font-medium text-slate-200">
                 {session.user.email}
               </p>
-              <p className="text-xs text-slate-500">
-                {isAdmin ? "Administrator" : "Staff Member"}
+              <p className="text-xs text-emerald-400 font-medium">
+                {isAdmin ? "Administrator" : "Staff"}
               </p>
             </div>
             <button
               onClick={() => supabase.auth.signOut()}
-              className="text-sm font-medium text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition-colors"
+              className="text-sm font-medium text-slate-300 hover:text-white bg-slate-800/50 hover:bg-slate-700 px-4 py-2 rounded-lg transition-all border border-slate-700"
             >
               Sign Out
             </button>
@@ -98,102 +77,52 @@ export default function App() {
       </header>
 
       {/* Navigation Tabs */}
-      <div className="bg-white border-b border-slate-200">
+      <div className="bg-white border-b border-slate-200 shadow-sm sticky top-16 z-10">
         <div className="max-w-7xl mx-auto px-6">
-          <nav className="flex gap-8 -mb-px overflow-x-auto">
-            {/* Dashboard Tab */}
-            <button
-              onClick={() => setActiveTab("list")}
-              className={getTabClass("list")}
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                />
-              </svg>
-              Dashboard
-            </button>
-
-            {/* Add Application Tab */}
-            <button
-              onClick={() => setActiveTab("add")}
-              className={getTabClass("add")}
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Add Application
-            </button>
-
-            {/* Admin Panel Tab (Only visible to Admins) */}
-            {isAdmin && (
+          <nav className="flex gap-6 -mb-px overflow-x-auto">
+            {["list", "add", ...(isAdmin ? ["admin"] : [])].map((tab) => (
               <button
-                onClick={() => setActiveTab("admin")}
-                className={getTabClass("admin")}
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200 whitespace-nowrap flex items-center gap-2 ${
+                  activeTab === tab
+                    ? "border-emerald-500 text-emerald-600"
+                    : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
+                }`}
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                  />
-                </svg>
-                Admin Panel
+                {tab === "list" && "Dashboard & Records"}
+                {tab === "add" && "Add Application"}
+                {tab === "admin" && "Admin Panel"}
               </button>
-            )}
+            ))}
           </nav>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-6 py-8 animate-fade-in">
-        {/* Tab 1: List & Stats */}
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-6 py-8">
         {activeTab === "list" && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fade-in">
             <StatsBar refreshKey={refreshKey} />
-            <CustomerList refreshKey={refreshKey} />
+            <CustomerList refreshKey={refreshKey} isAdmin={isAdmin} />
           </div>
         )}
-
-        {/* Tab 2: Add Form */}
         {activeTab === "add" && (
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto animate-fade-in">
             <CustomerForm
               onAdded={() => {
-                setRefreshKey((k) => k + 1); // Refresh the list data
-                setActiveTab("list"); // Automatically switch back to list
+                setRefreshKey((k) => k + 1);
+                setActiveTab("list");
               }}
               onCancel={() => setActiveTab("list")}
             />
           </div>
         )}
-
-        {/* Tab 3: Admin Panel */}
-        {activeTab === "admin" && isAdmin && <AdminPanel />}
+        {activeTab === "admin" && isAdmin && (
+          <div className="animate-fade-in">
+            <AdminPanel />
+          </div>
+        )}
       </main>
     </div>
   );

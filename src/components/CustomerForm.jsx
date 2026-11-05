@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 
-export default function CustomerForm({ onAdded }) {
+export default function CustomerForm({ onAdded, onCancel }) {
   const [form, setForm] = useState({
-    loan_id: "", // Added Loan ID
+    loan_id: "",
     full_name: "",
     mobile_number: "",
     email: "",
@@ -50,7 +50,7 @@ export default function CustomerForm({ onAdded }) {
     }
 
     const { error } = await supabase.from("loan_customers").insert({
-      loan_id: form.loan_id || null, // Save Loan ID
+      loan_id: form.loan_id || null,
       full_name: form.full_name,
       mobile_number: form.mobile_number || null,
       email: form.email || null,
@@ -65,163 +65,177 @@ export default function CustomerForm({ onAdded }) {
     if (error) {
       alert("Save failed: " + error.message);
     } else {
-      setForm({
-        loan_id: "",
-        full_name: "",
-        mobile_number: "",
-        email: "",
-        address: "",
-        loan_amount: "",
-        bank_partner: "",
-        status: "pending",
-      });
-      setFile(null);
-      setFileKey(Date.now());
       onAdded?.();
     }
     setLoading(false);
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-slate-900">
-          Customer Loan Details Form
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Enter customer details and upload documents.
-        </p>
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      {/* Form Header */}
+      <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">
+        <button
+          onClick={onCancel}
+          className="p-2 bg-white border border-slate-200 text-slate-500 hover:text-slate-800 rounded-lg shadow-sm transition"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+        </button>
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">
+            New Loan Application
+          </h2>
+          <p className="text-sm text-slate-500">
+            Enter customer details and upload documents.
+          </p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Row 1: Loan ID & Customer Name */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Loan ID
-            </label>
-            <input
-              name="loan_id"
-              value={form.loan_id}
-              onChange={handleChange}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition"
-              placeholder="e.g. LN-10045"
-            />
+      {/* Form Body */}
+      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* Personal Details */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider">
+            Personal Details
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Customer Name *
+              </label>
+              <input
+                name="full_name"
+                value={form.full_name}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                placeholder="e.g. John Doe"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Loan ID
+              </label>
+              <input
+                name="loan_id"
+                value={form.loan_id}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                placeholder="e.g. LN-10045"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Mobile Number
+              </label>
+              <input
+                name="mobile_number"
+                type="tel"
+                value={form.mobile_number}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                placeholder="+91 98765 43210"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Email Address
+              </label>
+              <input
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                placeholder="john@example.com"
+              />
+            </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Customer Name *
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Full Address
             </label>
             <input
-              name="full_name"
-              value={form.full_name}
+              name="address"
+              value={form.address}
               onChange={handleChange}
-              required
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition"
-              placeholder="e.g. John Doe"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+              placeholder="123 Main St, City, State"
             />
           </div>
         </div>
 
-        {/* Row 2: Mobile & Email */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Mobile Number
-            </label>
-            <input
-              name="mobile_number"
-              type="tel"
-              value={form.mobile_number}
-              onChange={handleChange}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition"
-              placeholder="+1 (555) 000-0000"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Email Address
-            </label>
-            <input
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={handleChange}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition"
-              placeholder="john@example.com"
-            />
+        <hr className="border-slate-100" />
+
+        {/* Loan Details */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider">
+            Loan Details
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Loan Amount (₹)
+              </label>
+              <input
+                name="loan_amount"
+                type="number"
+                value={form.loan_amount}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                placeholder="50000"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Partner Bank
+              </label>
+              <input
+                name="bank_partner"
+                value={form.bank_partner}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                placeholder="e.g. HDFC"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Status
+              </label>
+              <select
+                name="status"
+                value={form.status}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all cursor-pointer font-medium"
+              >
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Row 3: Address */}
+        {/* File Upload */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Full Address
-          </label>
-          <input
-            name="address"
-            value={form.address}
-            onChange={handleChange}
-            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition"
-            placeholder="123 Main St, City"
-          />
-        </div>
-
-        <hr className="border-slate-100 my-2" />
-
-        {/* Row 4: Loan Details */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Loan Amount
-            </label>
-            <input
-              name="loan_amount"
-              type="number"
-              value={form.loan_amount}
-              onChange={handleChange}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition"
-              placeholder="50000"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Partner Bank
-            </label>
-            <input
-              name="bank_partner"
-              value={form.bank_partner}
-              onChange={handleChange}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition"
-              placeholder="e.g. HDFC"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Status
-            </label>
-            <select
-              name="status"
-              value={form.status}
-              onChange={handleChange}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition cursor-pointer"
-            >
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </div>
-        </div>
-
-        {/* File Upload Dropzone */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">
             Loan Documents (PDF/Image)
           </label>
-          <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-teal-500 transition cursor-pointer relative bg-slate-50 hover:bg-teal-50/30">
-            <div className="space-y-1 text-center">
+          <div className="mt-1 flex justify-center px-6 pt-6 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-emerald-500 transition cursor-pointer relative bg-slate-50 hover:bg-emerald-50/30 group">
+            <div className="space-y-2 text-center">
               <svg
-                className="mx-auto h-10 w-10 text-slate-400"
+                className="mx-auto h-10 w-10 text-slate-400 group-hover:text-emerald-500 transition-colors"
                 stroke="currentColor"
                 fill="none"
                 viewBox="0 0 48 48"
@@ -234,7 +248,7 @@ export default function CustomerForm({ onAdded }) {
                 />
               </svg>
               <div className="text-sm text-slate-600">
-                <span className="font-semibold text-teal-600">
+                <span className="font-semibold text-emerald-600 group-hover:text-emerald-700">
                   Click to upload
                 </span>{" "}
                 or drag and drop
@@ -253,13 +267,23 @@ export default function CustomerForm({ onAdded }) {
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-slate-400 text-white font-semibold py-3 rounded-xl transition shadow-sm mt-4"
-        >
-          {loading ? "Saving Application..." : "Save Application"}
-        </button>
+        {/* Actions */}
+        <div className="flex gap-4 pt-4 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="w-1/3 bg-white border border-slate-300 text-slate-700 font-semibold py-3 rounded-xl hover:bg-slate-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-2/3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white font-semibold py-3 rounded-xl transition shadow-sm"
+          >
+            {loading ? "Saving Application..." : "Save Application"}
+          </button>
+        </div>
       </form>
     </div>
   );

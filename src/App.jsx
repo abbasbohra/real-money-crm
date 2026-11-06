@@ -12,15 +12,25 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("list");
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // State to pause the auth listener while creating a new user
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+
   useEffect(() => {
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => setSession(session));
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      // If we are in the middle of creating a user, ignore the auth change
+      if (isCreatingUser) return;
+
+      setSession(session);
+    });
+
     return () => subscription.unsubscribe();
-  }, []);
+  }, [isCreatingUser]);
 
   useEffect(() => {
     if (!session) return;
@@ -30,6 +40,7 @@ export default function App() {
         .select("is_admin")
         .eq("id", session.user.id)
         .single();
+
       if (data?.is_admin) setIsAdmin(true);
     };
     checkAdmin();
@@ -120,7 +131,8 @@ export default function App() {
         )}
         {activeTab === "admin" && isAdmin && (
           <div className="animate-fade-in">
-            <AdminPanel />
+            {/* Pass the setter to AdminPanel */}
+            <AdminPanel setIsCreatingUser={setIsCreatingUser} />
           </div>
         )}
       </main>

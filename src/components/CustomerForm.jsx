@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
+import imageCompression from "browser-image-compression"; // Import the library
 
 export default function CustomerForm({ onAdded, onCancel }) {
   const [form, setForm] = useState({
@@ -19,6 +20,49 @@ export default function CustomerForm({ onAdded, onCancel }) {
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
+  const handleFileChange = async (e) => {
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+
+    // Check if the file is an image (JPG, PNG)
+    if (selectedFile.type.startsWith("image/")) {
+      try {
+        // Compression options: Max size 1MB, max width/height 1920px
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        };
+
+        // Show a quick alert so the user knows it's compressing
+        console.log(
+          `Original size: ${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`,
+        );
+
+        const compressedFile = await imageCompression(selectedFile, options);
+
+        console.log(
+          `Compressed size: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`,
+        );
+
+        // Create a new File object to keep the original name
+        const newFile = new File([compressedFile], selectedFile.name, {
+          type: compressedFile.type,
+          lastModified: Date.now(),
+        });
+
+        setFile(newFile);
+      } catch (error) {
+        console.error("Compression error:", error);
+        alert("Failed to compress image. Uploading original file.");
+        setFile(selectedFile);
+      }
+    } else {
+      // If it's a PDF or other file, don't compress, just set it
+      setFile(selectedFile);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -35,8 +79,16 @@ export default function CustomerForm({ onAdded, onCancel }) {
     let documentPath = null;
 
     if (file) {
+      // Validate max size just in case (e.g., 5MB limit for PDFs)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File is too large. Maximum allowed size is 5MB.");
+        setLoading(false);
+        return;
+      }
+
       const ext = file.name.split(".").pop();
       const path = `${user.id}/${Date.now()}.${ext}`;
+
       const { error: uploadError } = await supabase.storage
         .from("loan-documents")
         .upload(path, file);
@@ -119,7 +171,7 @@ export default function CustomerForm({ onAdded, onCancel }) {
                 value={form.full_name}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                 placeholder="e.g. John Doe"
               />
             </div>
@@ -131,7 +183,7 @@ export default function CustomerForm({ onAdded, onCancel }) {
                 name="loan_id"
                 value={form.loan_id}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                 placeholder="e.g. LN-10045"
               />
             </div>
@@ -144,7 +196,7 @@ export default function CustomerForm({ onAdded, onCancel }) {
                 type="tel"
                 value={form.mobile_number}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                 placeholder="+91 98765 43210"
               />
             </div>
@@ -157,7 +209,7 @@ export default function CustomerForm({ onAdded, onCancel }) {
                 type="email"
                 value={form.email}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                 placeholder="john@example.com"
               />
             </div>
@@ -170,7 +222,7 @@ export default function CustomerForm({ onAdded, onCancel }) {
               name="address"
               value={form.address}
               onChange={handleChange}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
               placeholder="123 Main St, City, State"
             />
           </div>
@@ -193,7 +245,7 @@ export default function CustomerForm({ onAdded, onCancel }) {
                 type="number"
                 value={form.loan_amount}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                 placeholder="50000"
               />
             </div>
@@ -205,7 +257,7 @@ export default function CustomerForm({ onAdded, onCancel }) {
                 name="bank_partner"
                 value={form.bank_partner}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                 placeholder="e.g. HDFC"
               />
             </div>
@@ -217,7 +269,7 @@ export default function CustomerForm({ onAdded, onCancel }) {
                 name="status"
                 value={form.status}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all cursor-pointer font-medium"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none transition-all cursor-pointer font-medium"
               >
                 <option value="pending">Pending</option>
                 <option value="approved">Approved</option>
@@ -254,14 +306,16 @@ export default function CustomerForm({ onAdded, onCancel }) {
                 or drag and drop
               </div>
               <p className="text-xs text-slate-500">
-                {file ? file.name : "PDF, PNG, JPG up to 10MB"}
+                {file
+                  ? `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`
+                  : "Images will be auto-compressed. Max 5MB."}
               </p>
             </div>
             <input
               key={fileKey}
               type="file"
-              accept=".pdf,.jpg,.png"
-              onChange={(e) => setFile(e.target.files[0])}
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={handleFileChange} // Use the new compression handler
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
           </div>

@@ -2,19 +2,21 @@ import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { createClient } from "@supabase/supabase-js";
 
-export default function AdminPanel() {
+export default function AdminPanel({ setIsCreatingUser }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const [users, setUsers] = useState([]);
   // User creation state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [creating, setCreating] = useState(false);
-
+  const [role, setRole] = useState("staff");
   // PDF Generating state
   const [generatingPdf, setGeneratingPdf] = useState(false);
-
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   useEffect(() => {
     const fetchStats = async () => {
       const { data, error } = await supabase
@@ -28,11 +30,43 @@ export default function AdminPanel() {
     fetchStats();
   }, []);
 
+  const fetchUsers = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setUsers(data);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setCreating(true);
 
-    const { error } = await supabase.auth.signUp({
+    // 1. Pause the auth listener in App.jsx so the admin isn't kicked out
+    if (setIsCreatingUser) setIsCreatingUser(true);
+
+    // 2. Capture the current admin session BEFORE signUp
+    const {
+      data: { session: adminSession },
+    } = await supabase.auth.getSession();
+
+    // 3. Create an isolated client that won't persist the new session to storage
+    const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    });
+
+    const { data, error } = await tempClient.auth.signUp({
       email,
       password,
     });
@@ -40,10 +74,35 @@ export default function AdminPanel() {
     if (error) {
       alert("Error creating user: " + error.message);
     } else {
-      alert(`User ${email} created successfully!`);
+      // If successful, add them to the profiles table with the chosen role
+      if (data.user) {
+        await supabase.from("profiles").insert({
+          id: data.user.id,
+          email: email,
+          is_admin: role === "admin", // <-- Set role here
+        });
+      }
+
+      alert(`User ${email} created successfully as ${role}!`);
       setEmail("");
       setPassword("");
+      setRole("staff"); // Reset role dropdown
+      fetchUsers(); // Refresh the list
     }
+
+    // 4. Restore the admin session explicitly (safety net)
+    if (adminSession) {
+      await supabase.auth.setSession({
+        access_token: adminSession.access_token,
+        refresh_token: adminSession.refresh_token,
+      });
+    }
+
+    // 5. Let auth events flush, then re-enable the listener
+    setTimeout(() => {
+      if (setIsCreatingUser) setIsCreatingUser(false);
+    }, 100);
+
     setCreating(false);
   };
 
@@ -200,48 +259,103 @@ export default function AdminPanel() {
       {/* Add New User Form */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 max-w-2xl">
         <h2 className="text-xl font-bold text-slate-900 mb-2">
-          Add New Staff Account
+          Add New Account
         </h2>
         <p className="text-sm text-slate-500 mb-6">
-          Create credentials for your employees to access the system.
+          Create credentials for employees or new administrators.
         </p>
 
         <form onSubmit={handleCreateUser} className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Email Address
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition"
+                placeholder="user@office.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Temporary Password
+              </label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition"
+                placeholder="At least 6 characters"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Email Address
+              Account Role
             </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition"
-              placeholder="employee@office.com"
-            />
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition cursor-pointer"
+            >
+              <option value="staff">Staff Member</option>
+              <option value="admin">Administrator</option>
+            </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Temporary Password
-            </label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none transition"
-              placeholder="At least 6 characters"
-            />
-          </div>
+
           <button
             type="submit"
             disabled={creating}
             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-xl transition shadow-sm"
           >
-            {creating ? "Creating Account..." : "Create Staff Account"}
+            {creating ? "Creating Account..." : "Create Account"}
           </button>
         </form>
+      </div>
+
+      {/* Registered Users List */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+        <h2 className="text-xl font-bold text-slate-900 mb-6">
+          Registered Users
+        </h2>
+
+        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+          {users.length === 0 ? (
+            <p className="text-slate-500 text-sm">No users found.</p>
+          ) : (
+            users.map((u) => (
+              <div
+                key={u.id}
+                className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl"
+              >
+                <div>
+                  <p className="font-medium text-slate-800">
+                    {u.email || "No email"}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1 font-mono">
+                    {u.id.split("-")[0]}...
+                  </p>
+                </div>
+                <span
+                  className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${
+                    u.is_admin
+                      ? "bg-indigo-100 text-indigo-700"
+                      : "bg-emerald-100 text-emerald-700"
+                  }`}
+                >
+                  {u.is_admin ? "Admin" : "Staff"}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
